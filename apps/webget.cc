@@ -18,7 +18,7 @@ void get_URL(const string &host, const string &path) {
 	sock1.shutdown(SHUT_WR);
 	while(!sock1.eof()){
 		auto rec = sock1.read();
-		cout << rec << endl;
+		cout << rec;
 	}
 	sock1.close();
 	return;
