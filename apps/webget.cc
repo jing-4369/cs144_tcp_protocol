@@ -11,14 +11,10 @@ void get_URL(const string &host, const string &path) {
 	TCPSocket sock1;
 	sock1.connect(Address(host,"http")); 
 	string s = "GET "+path+" HTTP/1.1\r\n"+"Host: "+host+"\r\n"+"Connection: close\r\n\r\n";
-//	sock1.write("GET "+path+"HTTP/1.1\r\n");
-//	sock1.write("Host: "+host+"\r\n");
-//	sock1.write("Connection: close\r\n\r\n");
 	sock1.write(s);
 	sock1.shutdown(SHUT_WR);
 	while(!sock1.eof()){
-		auto rec = sock1.read();
-		cout << rec;
+		cout << sock1.read();
 	}
 	sock1.close();
 	return;
