@@ -39,17 +39,17 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             str += data[i];
             cur_index++;
         }
-		auto iter = buffer.begin();
-		while (!buffer.empty() && iter->first < cur_index) {
-			buffer.erase(buffer.begin());
-			iter = buffer.begin();
-		}
-		while (!buffer.empty() && iter->first == cur_index && str.size() < remain_capacity) {
-			str += iter->second;
-			cur_index++;
-			buffer.erase(buffer.begin());
-			iter = buffer.begin();
-		}
+        auto iter = buffer.begin();
+        while (!buffer.empty() && iter->first < cur_index) {
+            buffer.erase(buffer.begin());
+            iter = buffer.begin();
+        }
+        while (!buffer.empty() && iter->first == cur_index && str.size() < remain_capacity) {
+            str += iter->second;
+            cur_index++;
+            buffer.erase(buffer.begin());
+            iter = buffer.begin();
+        }
         stream_out().write(str);
         if (cur_index == end_index) {
             stream_out().end_input();

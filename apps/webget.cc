@@ -7,17 +7,17 @@
 using namespace std;
 
 void get_URL(const string &host, const string &path) {
-    // Your code here.  
-	TCPSocket sock1;
-	sock1.connect(Address(host,"http")); 
-	string s = "GET "+path+" HTTP/1.1\r\n"+"Host: "+host+"\r\n"+"Connection: close\r\n\r\n";
-	sock1.write(s);
-	sock1.shutdown(SHUT_WR);
-	while(!sock1.eof()){
-		cout << sock1.read();
-	}
-	sock1.close();
-	return;
+    // Your code here.
+    TCPSocket sock1;
+    sock1.connect(Address(host, "http"));
+    string s = "GET " + path + " HTTP/1.1\r\n" + "Host: " + host + "\r\n" + "Connection: close\r\n\r\n";
+    sock1.write(s);
+    sock1.shutdown(SHUT_WR);
+    while (!sock1.eof()) {
+        cout << sock1.read();
+    }
+    sock1.close();
+    return;
     // You will need to connect to the "http" service on
     // the computer whose name is in the "host" string,
     // then request the URL path given in the "path" string.
