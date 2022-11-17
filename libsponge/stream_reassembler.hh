@@ -20,6 +20,7 @@ class StreamReassembler {
 	std::set<std::pair<size_t, std::string>> buffer{};
 	size_t cur{};
 	size_t cur_size{};
+	size_t end{};
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
     //! \note This capacity limits both the bytes that have been reassembled,

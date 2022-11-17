@@ -22,22 +22,41 @@ StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity),
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
+	if(eof){
+		end = data.size() + index;
+		if(cur == end){
+			stream_out().end_input();
+			return;
+		}
+	}
 	if (index <= cur){
-		stream_out().write(data);
-		cur += index + data.size();
-		while(!buffer.empty() && cur >= buffer.begin()->first){
-			auto iter = buffer.begin();
-			stream_out().write(iter->second);
-			cur = iter->first + iter->second.size();
-			buffer.erase(buffer.begin());
+		if(cur - index < data.size()){
+			stream_out().write(data.substr(cur - index));
+			cur = min(_capacity, index + data.size());
+			if(cur == end){
+				stream_out().end_input();
+				return;
+			}
+			while(!buffer.empty() && cur >= buffer.begin()->first){
+				auto iter = buffer.begin();
+				size_t t_index = iter->first;
+				string t_data = iter->second;
+				cur_size -= t_data.size();
+				if(cur - t_index < t_data.size()){
+					stream_out().write(t_data.substr(cur - t_index));
+					cur = min(_capacity, t_index + t_data.size());
+				}
+				if(cur == end){
+					stream_out().end_input();
+					return;
+				}
+				buffer.erase(buffer.begin());
+			}
 		}
 	}
 	else if(data.size() <= _capacity - cur_size) {
 		buffer.insert({index, data});
 		cur_size += data.size();
-	}
-	if(eof){
-		stream_out().end_input();
 	}
 }
 
