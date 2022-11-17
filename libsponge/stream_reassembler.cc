@@ -1,5 +1,8 @@
 #include "stream_reassembler.hh"
+
 #include <cstddef>
+#include <cstdint>
+#include <iterator>
 //#include <algorithm>
 // Dummy implementation of a stream reassembler.
 
@@ -13,71 +16,47 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity){
-	cur = 0;
-	cur_size = 0;
+StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity) {
+    cur_index = 0;
+    end_index = INT32_MAX;
 }
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
-	if(eof){
-		end = data.size() + index;
-		if(cur == end){
-			stream_out().end_input();
-			return;
+    if (eof) {
+        end_index = index + data.size();
+    }
+    if (index > cur_index) {
+        for (size_t i = 0; i < data.size() && buffer.size() <= _capacity; i++) {
+            buffer.insert({index + i, data[i]});
+        }
+    } else {
+        string str;
+        size_t remain_capacity = stream_out().remaining_capacity();
+        for (size_t i = cur_index - index; i < data.size() && str.size() < remain_capacity; i++) {
+            str += data[i];
+            cur_index++;
+        }
+		auto iter = buffer.begin();
+		while (!buffer.empty() && iter->first < cur_index) {
+			buffer.erase(buffer.begin());
+			iter = buffer.begin();
 		}
-	}
-	if (index <= cur){
-		if(cur - index < data.size()){
-			stream_out().write(data.substr(cur - index));
-			cur = min(_capacity, index + data.size());
-			if(cur == end){
-				stream_out().end_input();
-				return;
-			}
-			while(!buffer.empty() && cur >= buffer.begin()->first){
-				auto iter = buffer.begin();
-				size_t t_index = iter->first;
-				string t_data = iter->second;
-				cur_size -= t_data.size();
-				if(cur - t_index < t_data.size()){
-					stream_out().write(t_data.substr(cur - t_index));
-					cur = min(_capacity, t_index + t_data.size());
-				}
-				if(cur == end){
-					stream_out().end_input();
-					return;
-				}
-				buffer.erase(buffer.begin());
-			}
+		while (!buffer.empty() && iter->first == cur_index && str.size() < remain_capacity) {
+			str += iter->second;
+			cur_index++;
+			buffer.erase(buffer.begin());
+			iter = buffer.begin();
 		}
-	}
-	else if(data.size() <= _capacity - cur_size) {
-		buffer.insert({index, data});
-		cur_size += data.size();
-	}
+        stream_out().write(str);
+        if (cur_index == end_index) {
+            stream_out().end_input();
+        }
+    }
 }
 
-size_t StreamReassembler::unassembled_bytes() const { 
-	int res = 0;
-	size_t pre_index = 0;
-	for (auto iter = buffer.begin(); iter != buffer.end(); iter++) {
-		size_t index = iter->first;
-		string data = iter->second;
-		if(index >= pre_index){
-			res += data.size();
-			pre_index = index + data.size();
-		}
-		else if(pre_index < index + data.size()){
-			res += data.size() + index - pre_index;
-			pre_index = index + data.size();
-		}
-	}
-	return res;
-}
+size_t StreamReassembler::unassembled_bytes() const { return buffer.size(); }
 
-bool StreamReassembler::empty() const { 
-	return buffer.empty(); 
-}
+bool StreamReassembler::empty() const { return buffer.empty(); }
