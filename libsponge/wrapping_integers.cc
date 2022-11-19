@@ -1,4 +1,7 @@
 #include "wrapping_integers.hh"
+#include <bits/stdint-uintn.h>
+#include <cmath>
+#include <cstdint>
 
 // Dummy implementation of a 32-bit wrapping integer
 
@@ -14,8 +17,8 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-    DUMMY_CODE(n, isn);
-    return WrappingInt32{0};
+	uint32_t res = isn.raw_value() + static_cast<uint32_t>(n);
+    return WrappingInt32{res};
 }
 
 //! Transform a WrappingInt32 into an "absolute" 64-bit sequence number (zero-indexed)
@@ -29,6 +32,17 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-    DUMMY_CODE(n, isn, checkpoint);
-    return {};
+	uint32_t abs_n =  n - isn;
+	if(checkpoint == 0){
+		return static_cast<uint64_t>(abs_n);
+	}
+	uint64_t res = (checkpoint & ~((1ull << 32) - 1));
+	uint32_t check = static_cast<uint32_t>(checkpoint);
+	if(check > abs_n && check - abs_n > ((1ul << 31) - 1))
+		res = res + abs_n + (1ul << 32);
+	else if(check < abs_n && abs_n - check > ((1ul << 31) - 1)) 
+		res = res + abs_n - (1ul << 32);  
+	else 
+		res = res + abs_n;
+    return res;
 }
