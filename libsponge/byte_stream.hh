@@ -1,6 +1,7 @@
 #ifndef SPONGE_LIBSPONGE_BYTE_STREAM_HH
 #define SPONGE_LIBSPONGE_BYTE_STREAM_HH
 
+#include <bits/stdint-uintn.h>
 #include <string>
 #include <vector>
 
@@ -15,7 +16,7 @@ class ByteStream {
     std::vector<char> buffer{};
     int write_ptr{}, read_ptr{};
     int _capacity{};
-    int _bytes_read{}, _bytes_write{};
+    uint64_t _bytes_read{}, _bytes_write{};
     bool _input_ended{};
     // Hint: This doesn't need to be a sophisticated data structure at
 
