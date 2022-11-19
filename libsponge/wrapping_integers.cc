@@ -1,4 +1,5 @@
 #include "wrapping_integers.hh"
+
 #include <bits/stdint-uintn.h>
 #include <cmath>
 #include <cstdint>
@@ -17,7 +18,7 @@ using namespace std;
 //! \param n The input absolute 64-bit sequence number
 //! \param isn The initial sequence number
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
-	uint32_t res = isn.raw_value() + static_cast<uint32_t>(n);
+    uint32_t res = isn.raw_value() + static_cast<uint32_t>(n);
     return WrappingInt32{res};
 }
 
@@ -32,16 +33,16 @@ WrappingInt32 wrap(uint64_t n, WrappingInt32 isn) {
 //! and the other stream runs from the remote TCPSender to the local TCPReceiver and
 //! has a different ISN.
 uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
-	uint32_t biggest_offset = (1ull << 31) - 1;
-	uint32_t abs_n =  n - isn;
-	if(checkpoint < biggest_offset){
-		return static_cast<uint64_t>(abs_n);
-	}
-	uint64_t res = (checkpoint & ~((1ull << 32) - 1)) + abs_n;
-	uint32_t check = static_cast<uint32_t>(checkpoint);
-	if(check > abs_n && check - abs_n > biggest_offset)
-		res += 1ul << 32;
-	else if(check < abs_n && abs_n - check > biggest_offset ) 
-		res -= 1ul << 32;
+    uint32_t biggest_offset = (1ull << 31) - 1;
+    uint32_t abs_n = n - isn;
+    if (checkpoint < biggest_offset) {
+        return static_cast<uint64_t>(abs_n);
+    }
+    uint64_t res = (checkpoint & ~((1ull << 32) - 1)) + abs_n;
+    uint32_t check = static_cast<uint32_t>(checkpoint);
+    if (check > abs_n && check - abs_n > biggest_offset)
+        res += 1ul << 32;
+    else if (check < abs_n && abs_n - check > biggest_offset)
+        res -= 1ul << 32;
     return res;
 }

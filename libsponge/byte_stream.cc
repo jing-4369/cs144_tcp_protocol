@@ -26,8 +26,8 @@ ByteStream::ByteStream(const size_t capacity) : _capacity(capacity) {
 }
 
 size_t ByteStream::write(const string &data) {
-    //if (input_ended())
-        //return -1;
+    // if (input_ended())
+    // return -1;
     int size = 0;
     for (auto ch : data) {
         if (_bytes_write > _bytes_read && write_ptr == read_ptr) {
