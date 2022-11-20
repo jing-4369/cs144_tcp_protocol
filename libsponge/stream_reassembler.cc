@@ -40,7 +40,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             cur_index++;
         }
         auto iter = buffer.begin();
-        while (!buffer.empty() && iter->first < cur_index) {
+        while (!buffer.empty() && iter->first < cur_index && str.size() < remain_capacity) {
             buffer.erase(buffer.begin());
             iter = buffer.begin();
         }

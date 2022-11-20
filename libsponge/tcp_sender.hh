@@ -5,9 +5,12 @@
 #include "tcp_config.hh"
 #include "tcp_segment.hh"
 #include "wrapping_integers.hh"
+#include "tcp_timer.hh"
 
+#include <cstddef>
 #include <functional>
 #include <queue>
+#include <deque>
 
 //! \brief The "sender" part of a TCP implementation.
 
@@ -32,6 +35,11 @@ class TCPSender {
     //! the (absolute) sequence number for the next byte to be sent
     uint64_t _next_seqno{0};
 
+	size_t _window_size{1};
+	std::deque<TCPSegment> _segments_flying{};
+	TCPTimer _timer{_initial_retransmission_timeout};
+	size_t _cur_time{0};
+	uint64_t _bytes_flight{0};
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,

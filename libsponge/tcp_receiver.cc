@@ -16,21 +16,20 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
     if (seg.header().syn) {
         SYN = true;
         isn = seg.header().seqno;
-        if (seg.header().fin) {
-            FIN = true;
-            stream_out().end_input();
-        }
         if (seg.payload().size()) {
             _reassembler.push_substring(seg.payload().copy(),
                                         unwrap(seg.header().seqno + 1, isn, stream_out().bytes_written() + 1) - 1,
                                         seg.header().fin);
         }
-        return;
+		if (seg.header().fin) {
+			FIN = true;
+            stream_out().end_input();
+		}
     }
-    if (SYN && seg.header().fin) {
-        FIN = true;
-    }
-    if (SYN) {
+	else if (SYN) {
+		if (seg.header().fin) {
+			FIN = true;
+		}
         _reassembler.push_substring(seg.payload().copy(),
                                     unwrap(seg.header().seqno, isn, stream_out().bytes_written() + 1) - 1,
                                     seg.header().fin);
