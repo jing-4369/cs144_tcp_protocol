@@ -40,6 +40,7 @@ class TCPSender {
 	TCPTimer _timer{_initial_retransmission_timeout};
 	size_t _cur_time{0};
 	uint64_t _bytes_flight{0};
+	bool _has_SYN{}, _has_FIN{};
   public:
     //! Initialize a TCPSender
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
