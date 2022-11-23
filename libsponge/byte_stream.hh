@@ -13,9 +13,9 @@
 class ByteStream {
   private:
     // Your code here -- add private members as necessary.
-    std::vector<char> buffer{};
+    int _capacity;
+    std::vector<char> buffer;
     int write_ptr{}, read_ptr{};
-    int _capacity{};
     uint64_t _bytes_read{}, _bytes_write{};
     bool _input_ended{};
     // Hint: This doesn't need to be a sophisticated data structure at

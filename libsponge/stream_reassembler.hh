@@ -18,8 +18,8 @@ class StreamReassembler {
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
     std::set<std::pair<size_t, char>> buffer{};
-    size_t cur_index{};
-    size_t end_index{};
+    size_t cur_index{0};
+    size_t end_index{INT32_MAX};
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
