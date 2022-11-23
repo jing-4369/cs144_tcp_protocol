@@ -3,8 +3,8 @@
 #include "buffer.hh"
 #include "tcp_config.hh"
 #include "tcp_segment.hh"
-#include "wrapping_integers.hh"
 #include "tcp_timer.hh"
+#include "wrapping_integers.hh"
 
 #include <algorithm>
 #include <bits/stdint-uintn.h>
@@ -27,56 +27,54 @@ using namespace std;
 TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const std::optional<WrappingInt32> fixed_isn)
     : _isn(fixed_isn.value_or(WrappingInt32{random_device()()}))
     , _initial_retransmission_timeout{retx_timeout}
-    , _stream(capacity) 
-	, _timer{_initial_retransmission_timeout} {}
+    , _stream(capacity)
+    , _timer{_initial_retransmission_timeout} {}
 
 uint64_t TCPSender::bytes_in_flight() const { return _bytes_flight; }
 
 void TCPSender::fill_window() {
-	if (_next_seqno == _stream.bytes_written() + 2) {
-		return;
-	}
-	TCPSegment seg;
-	size_t seg_size = min(TCPConfig::MAX_PAYLOAD_SIZE, min(_stream.buffer_size(), _window_size));
-	while (seg_size || ( _next_seqno == 0 && !_has_SYN) || (_stream.input_ended() && !_has_FIN && _window_size > _bytes_flight )) {
-		seg.header().seqno = wrap(_next_seqno, _isn);
-		if (_stream.input_ended()) {
-			if (seg_size) {
-				seg.payload() = _stream.read(seg_size); 
-				_next_seqno += seg.length_in_sequence_space();
-				_window_size -= seg.length_in_sequence_space();
-				if(_window_size){
-					seg.header().fin = true;
-					_next_seqno++;
-					_window_size--;
-					_has_FIN = true;
-				}
-			}
-			else {
-				seg.header().fin = true;
-				_next_seqno++;
-				_window_size--;
-				_has_FIN = true;
-			}
-		}
-		else if (seg_size) {
-			seg.payload() = _stream.read(seg_size); 
-			_next_seqno += seg.length_in_sequence_space();
-			_window_size -= seg.length_in_sequence_space();
-		}
-		else {
-			seg.header().syn = true;
-			_next_seqno++;
-			_has_SYN = true;
-			_window_size--;
-		}
-		_segments_out.push(seg);
-		_segments_flying.push_back(seg);
-		_bytes_flight += seg.length_in_sequence_space();
-		if (!_timer.is_running()) {
-			_timer.run_timer(_cur_time);
-		}
-	seg_size = min(TCPConfig::MAX_PAYLOAD_SIZE, min(_stream.buffer_size(), _window_size));
+    if (_next_seqno == _stream.bytes_written() + 2) {
+        return;
+    }
+    TCPSegment seg;
+    size_t seg_size = min(TCPConfig::MAX_PAYLOAD_SIZE, min(_stream.buffer_size(), _window_size));
+    while (seg_size || (_next_seqno == 0 && !_has_SYN) ||
+           (_stream.input_ended() && !_has_FIN && _window_size > _bytes_flight)) {
+        seg.header().seqno = wrap(_next_seqno, _isn);
+        if (_stream.input_ended()) {
+            if (seg_size) {
+                seg.payload() = _stream.read(seg_size);
+                _next_seqno += seg.length_in_sequence_space();
+                _window_size -= seg.length_in_sequence_space();
+                if (_window_size) {
+                    seg.header().fin = true;
+                    _next_seqno++;
+                    _window_size--;
+                    _has_FIN = true;
+                }
+            } else {
+                seg.header().fin = true;
+                _next_seqno++;
+                _window_size--;
+                _has_FIN = true;
+            }
+        } else if (seg_size) {
+            seg.payload() = _stream.read(seg_size);
+            _next_seqno += seg.length_in_sequence_space();
+            _window_size -= seg.length_in_sequence_space();
+        } else {
+            seg.header().syn = true;
+            _next_seqno++;
+            _has_SYN = true;
+            _window_size--;
+        }
+        _segments_out.push(seg);
+        _segments_flying.push_back(seg);
+        _bytes_flight += seg.length_in_sequence_space();
+        if (!_timer.is_running()) {
+            _timer.run_timer(_cur_time);
+        }
+        seg_size = min(TCPConfig::MAX_PAYLOAD_SIZE, min(_stream.buffer_size(), _window_size));
     }
 }
 
@@ -84,9 +82,9 @@ void TCPSender::fill_window() {
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
     uint64_t abs_ackno = unwrap(ackno, _isn, next_seqno_absolute());
-	if (abs_ackno == 0 || abs_ackno > _next_seqno) {
-		return;
-	}
+    if (abs_ackno == 0 || abs_ackno > _next_seqno) {
+        return;
+    }
     while (!_segments_flying.empty()) {
         WrappingInt32 cur_no =
             _segments_flying.front().header().seqno + _segments_flying.front().length_in_sequence_space();
@@ -94,31 +92,38 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         if (abs_ackno >= abs_curno) {
             _bytes_flight -= _segments_flying.front().length_in_sequence_space();
             _segments_flying.pop_front();
-			_timer.reset_timeout(_initial_retransmission_timeout);
-			_timer.run_timer(_cur_time);
+            _timer.reset_timeout(_initial_retransmission_timeout);
+            _timer.run_timer(_cur_time);
+        } else {
+            break;
         }
-		else {
-			break;
-		}
     }
     _next_seqno = max(_next_seqno, abs_ackno);
-    _window_size = max(window_size, static_cast<uint16_t>(1));
+    if (abs_ackno == _stream.bytes_written() + 2) {
+        _timer.stop_timer();
+    }
+    if (window_size == 0) {
+        _window_size = 1;
+        _congest_flag = true;
+    } else {
+        _window_size = window_size;
+        _congest_flag = false;
+    }
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
     _cur_time += ms_since_last_tick;
-    if (_timer.is_running() && _timer.is_expired(ms_since_last_tick)) {
-		// After syn_acked, then window_size 0 can be treated as 1
-		// means that syn sign is sended under double_timeout stretagy
-		if (_window_size == 0 && next_seqno_absolute() > bytes_in_flight()) {
-			_segments_out.push(_segments_flying.front());
-		}
-		else {
-			_timer.double_timeout();
-			_segments_out.push(_segments_flying.front());
-		}
-		_timer.run_timer(_cur_time);
+    if (_timer.is_running() && _timer.is_expired(_cur_time)) {
+        // After syn_acked, then window_size 0 can be treated as 1
+        // means that syn sign is sended under double_timeout stretagy
+        if (_window_size == 0 && next_seqno_absolute() > bytes_in_flight() && _congest_flag) {
+            _segments_out.push(_segments_flying.front());
+        } else {
+            _timer.double_timeout();
+            _segments_out.push(_segments_flying.front());
+        }
+        _timer.run_timer(_cur_time);
     }
 }
 
