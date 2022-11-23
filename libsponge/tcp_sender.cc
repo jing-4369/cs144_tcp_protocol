@@ -37,35 +37,29 @@ void TCPSender::fill_window() {
         return;
     }
     TCPSegment seg;
-    size_t seg_size = min(TCPConfig::MAX_PAYLOAD_SIZE, min(_stream.buffer_size(), _window_size));
+    size_t seg_size = min({TCPConfig::MAX_PAYLOAD_SIZE, _stream.buffer_size(), _window_size});
     while (seg_size || (_next_seqno == 0 && !_has_SYN) ||
            (_stream.input_ended() && !_has_FIN && _window_size > _bytes_flight)) {
         seg.header().seqno = wrap(_next_seqno, _isn);
-        if (_stream.input_ended()) {
-            if (seg_size) {
-                seg.payload() = _stream.read(seg_size);
-                _next_seqno += seg.length_in_sequence_space();
-                _window_size -= seg.length_in_sequence_space();
-                if (_window_size) {
-                    seg.header().fin = true;
-                    _next_seqno++;
-                    _window_size--;
-                    _has_FIN = true;
-                }
-            } else {
-                seg.header().fin = true;
-                _next_seqno++;
-                _window_size--;
-                _has_FIN = true;
-            }
-        } else if (seg_size) {
+        if (seg_size) {
             seg.payload() = _stream.read(seg_size);
             _next_seqno += seg.length_in_sequence_space();
             _window_size -= seg.length_in_sequence_space();
-        } else {
+            if (_stream.input_ended() && _window_size) {
+                seg.header().fin = true;
+                _next_seqno++;
+                _has_FIN = true;
+                _window_size--;
+            }
+        } else if (_next_seqno == 0) {
             seg.header().syn = true;
             _next_seqno++;
             _has_SYN = true;
+            _window_size--;
+        } else {
+            seg.header().fin = true;
+            _next_seqno++;
+            _has_FIN = true;
             _window_size--;
         }
         _segments_out.push(seg);
@@ -74,7 +68,7 @@ void TCPSender::fill_window() {
         if (!_timer.is_running()) {
             _timer.run_timer(_cur_time);
         }
-        seg_size = min(TCPConfig::MAX_PAYLOAD_SIZE, min(_stream.buffer_size(), _window_size));
+        seg_size = min({TCPConfig::MAX_PAYLOAD_SIZE, _stream.buffer_size(), _window_size});
     }
 }
 
@@ -99,6 +93,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         }
     }
     _next_seqno = max(_next_seqno, abs_ackno);
+
     if (abs_ackno == _stream.bytes_written() + 2) {
         _timer.stop_timer();
     }
@@ -117,7 +112,7 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     if (_timer.is_running() && _timer.is_expired(_cur_time)) {
         // After syn_acked, then window_size 0 can be treated as 1
         // means that syn sign is sended under double_timeout stretagy
-        if (_window_size == 0 && next_seqno_absolute() > bytes_in_flight() && _congest_flag) {
+        if (_window_size == 0 && _congest_flag) {
             _segments_out.push(_segments_flying.front());
         } else {
             _timer.double_timeout();
