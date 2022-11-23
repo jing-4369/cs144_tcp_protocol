@@ -37,7 +37,7 @@ class TCPSender {
 
 	size_t _window_size{1};
 	std::deque<TCPSegment> _segments_flying{};
-	TCPTimer _timer{_initial_retransmission_timeout};
+	TCPTimer _timer;
 	size_t _cur_time{0};
 	uint64_t _bytes_flight{0};
 	bool _has_SYN{}, _has_FIN{};

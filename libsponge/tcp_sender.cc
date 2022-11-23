@@ -27,7 +27,8 @@ using namespace std;
 TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const std::optional<WrappingInt32> fixed_isn)
     : _isn(fixed_isn.value_or(WrappingInt32{random_device()()}))
     , _initial_retransmission_timeout{retx_timeout}
-    , _stream(capacity) {}
+    , _stream(capacity) 
+	, _timer{_initial_retransmission_timeout} {}
 
 uint64_t TCPSender::bytes_in_flight() const { return _bytes_flight; }
 
@@ -101,16 +102,23 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 		}
     }
     _next_seqno = max(_next_seqno, abs_ackno);
-    _window_size = window_size;
+    _window_size = max(window_size, static_cast<uint16_t>(1));
 }
 
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
     _cur_time += ms_since_last_tick;
     if (_timer.is_running() && _timer.is_expired(ms_since_last_tick)) {
-        _timer.double_timeout();
-        _timer.run_timer(_cur_time);
-		_segments_out.push(_segments_flying.front());
+		// After syn_acked, then window_size 0 can be treated as 1
+		// means that syn sign is sended under double_timeout stretagy
+		if (_window_size == 0 && next_seqno_absolute() > bytes_in_flight()) {
+			_segments_out.push(_segments_flying.front());
+		}
+		else {
+			_timer.double_timeout();
+			_segments_out.push(_segments_flying.front());
+		}
+		_timer.run_timer(_cur_time);
     }
 }
 
