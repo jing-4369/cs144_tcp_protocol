@@ -94,7 +94,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     }
     _next_seqno = max(_next_seqno, abs_ackno);
 
-    if (abs_ackno == _stream.bytes_written() + 2) {
+    if ((!_has_FIN && abs_ackno == _stream.bytes_written() + 1) || (_has_FIN && abs_ackno == _stream.bytes_written() + 2)) {
         _timer.stop_timer();
     }
     if (window_size == 0) {
@@ -109,7 +109,7 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
 //! \param[in] ms_since_last_tick the number of milliseconds since the last call to this method
 void TCPSender::tick(const size_t ms_since_last_tick) {
     _cur_time += ms_since_last_tick;
-    if (_timer.is_running() && _timer.is_expired(_cur_time)) {
+    if (_timer.is_running() && _timer.is_expired(_cur_time) && !_segments_flying.empty()) {
         // After syn_acked, then window_size 0 can be treated as 1
         // means that syn sign is sended under double_timeout stretagy
         if (_window_size == 0 && _congest_flag) {
