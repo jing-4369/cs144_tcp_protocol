@@ -34,7 +34,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     if (seg.header().rst) {
         _sender.stream_in().set_error();
         _receiver.stream_out().set_error();
-        // TODO kill the connection
+        // kill the connection
 		_active = false;
 		_linger_after_streams_finish = false;
     } else {
@@ -113,7 +113,7 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 	_cur_time += ms_since_last_tick;
 	_sender.tick(ms_since_last_tick);
 	if (_sender.consecutive_retransmissions() > _cfg.MAX_RETX_ATTEMPTS) {
-		// TODO send RST
+		// send RST
 		if (_sender.segments_out().empty()) {
 			_sender.send_empty_segment();
 		}
@@ -147,7 +147,7 @@ void TCPConnection::end_input_stream() {
 	while (!_segments_out.empty()) {
 		_segments_out.pop();
 	}
-	// TODO send FIN
+	// send FIN
 	_sender.fill_window();
 	_segments_out.push(_sender.segments_out().front());
 	_sender.segments_out().pop();
