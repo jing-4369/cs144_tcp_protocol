@@ -22,7 +22,7 @@ class TCPConnection {
     //! in case the remote TCPConnection doesn't know we've received its whole stream?
     bool _linger_after_streams_finish{true};
 
-	bool _active{false};
+	bool _active{true};
 	size_t _cur_time{0};
 	size_t _receive_seg_time{0};
   public:
@@ -85,7 +85,7 @@ class TCPConnection {
     //!@}
 
     //! Construct a new connection from a configuration
-    explicit TCPConnection(const TCPConfig &cfg) : _cfg{cfg}, _active(true){}
+    explicit TCPConnection(const TCPConfig &cfg) : _cfg{cfg} {}
 
     //! \name construction and destruction
     //! moving is allowed; copying is disallowed; default construction not possible

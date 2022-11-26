@@ -62,9 +62,9 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
 					_segments_out.push(new_seg);
 					_sender.segments_out().pop();
 				}
-				if ((_sender.bytes_in_flight() == 0) && (_sender.next_seqno_absolute() == _sender.stream_in().bytes_written() + 2) && _linger_after_streams_finish == false) {
-					_active = false;
-				}
+				//if ((_sender.bytes_in_flight() == 0) && (_sender.next_seqno_absolute() == _sender.stream_in().bytes_written() + 2) && _linger_after_streams_finish == false) {
+					//_active = false;
+				//}
 			}
         }
 		if (seg.length_in_sequence_space()) {
@@ -120,7 +120,6 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 		_segments_out.push(_sender.segments_out().front());
 		_sender.segments_out().pop();
 		_segments_out.front().header().rst = true;
-		_linger_after_streams_finish = false;
 		_active = false;
         _sender.stream_in().set_error();
         _receiver.stream_out().set_error();
@@ -136,9 +135,15 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 		_segments_out.push(seg);
 		_sender.segments_out().pop();
 	}
-	if ((_sender.bytes_in_flight() == 0) && (_sender.next_seqno_absolute() == _sender.stream_in().bytes_written() + 2) && inbound_stream().input_ended() && _sender.stream_in().input_ended() && _receiver.unassembled_bytes() == 0 && time_since_last_segment_received() >= 10 * _cfg.rt_timeout) {
-		_linger_after_streams_finish = false;
-		_active = false;
+	if ((_sender.bytes_in_flight() == 0) && inbound_stream().input_ended() && _sender.stream_in().input_ended() && _receiver.unassembled_bytes() == 0 && (_sender.next_seqno_absolute() == _sender.stream_in().bytes_written() + 2)) {
+		if (_linger_after_streams_finish) {
+			if (time_since_last_segment_received() >= 10 * _cfg.rt_timeout) {
+				_active = false;
+			}
+		}
+		else{
+			_active = false;
+		}
 	}
 }
 
@@ -174,6 +179,9 @@ try {
 		_segments_out.push(_sender.segments_out().front());
 		_sender.segments_out().pop();
 		_segments_out.front().header().rst = true;
+		_sender.stream_in().set_error();
+		_receiver.stream_out().set_error();
+		_active = false;
 	}
 } catch (const exception &e) {
 	std::cerr << "Exception destructing TCP FSM: " << e.what() << std::endl;
