@@ -34,9 +34,7 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     if (seg.header().rst) {
         _sender.stream_in().set_error();
         _receiver.stream_out().set_error();
-        // kill the connection
 		_active = false;
-		_linger_after_streams_finish = false;
     } else {
 		if (!_receiver.ackno().has_value() 
 				|| ((seg.header().seqno - _receiver.ackno().value() + static_cast<int32_t>(_receiver.stream_out().bytes_written()) >= 0 ) && (seg.header().seqno - _receiver.ackno().value() - static_cast<int32_t>(_receiver.window_size()) < 0))) {
@@ -159,15 +157,14 @@ void TCPConnection::end_input_stream() {
 	if (_receiver.ackno().has_value()) {
 		_segments_out.front().header().ack = true;
 		_segments_out.front().header().ackno = _receiver.ackno().value(); 
-		_segments_out.front().header().win = _receiver.window_size();
 	}
+	_segments_out.front().header().win = min(static_cast<size_t>(UINT16_MAX), _receiver.window_size());
 }
 
 void TCPConnection::connect() {
 	_sender.fill_window();
 	_segments_out.push(_sender.segments_out().front());
 	_sender.segments_out().pop();
-	_active = true;
 }
 
 TCPConnection::~TCPConnection() {
