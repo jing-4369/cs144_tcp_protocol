@@ -155,7 +155,7 @@ make_test_file () {
 
 exit_cleanup () {
     set +u
-    rm -f "${TEST_IN_FILE}" "${TEST_OUT_FILE}" "${TEST_OUT2_FILE}"
+    # rm -f "${TEST_IN_FILE}" "${TEST_OUT_FILE}" "${TEST_OUT2_FILE}"
     [ ! -z "$COPROC_PID" ] && kill ${COPROC_PID}
 }
 
@@ -230,6 +230,8 @@ if ! wait; then
     exit 1
 fi
 
+cp "${TEST_IN_FILE}" ~/cs144_tcp_protocol/test_in_file
+cp "${TEST_OUT_FILE}" ~/cs144_tcp_protocol/test_out_file
 HASH_OUT=$(hash_file ${TEST_OUT_FILE})
 if [ ! -z "${HASH_OUT2}" ] && [ "${HASH_OUT}" != "${HASH_OUT2}" ] || [ "${HASH_IN}" != "${HASH_OUT}" ]; then
     echo ERROR: "$HASH_IN" neq "$HASH_OUT" or "$HASH_OUT2"
