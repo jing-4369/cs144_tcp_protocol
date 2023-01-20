@@ -47,23 +47,24 @@ void TCPConnection::segment_received(const TCPSegment &seg) {
     if (inbound_stream().input_ended() && !_sender.stream_in().input_ended()) {
         _linger_after_streams_finish = false;
     }
+
+    if (seg.header().syn && _sender.next_seqno_absolute() == 0) {
+        connect();
+        return;
+    }
     if (seg.header().ack) {
         if (_sender.next_seqno_absolute() != 0) {
             _sender.ack_received(seg.header().ackno, seg.header().win);
             _sender.fill_window();
         }
     }
-    if (seg.header().syn && _sender.next_seqno_absolute() == 0) {
-        connect();
-        return;
+    bool need_send_empty = _receiver.ackno().has_value() && (seg.length_in_sequence_space() == 0) &&
+                           seg.header().seqno == _receiver.ackno().value() - 1 && _sender.segments_out().empty();
+    need_send_empty |= seg.length_in_sequence_space();
+    if (need_send_empty) {
+        _sender.send_empty_segment();
     }
-
-    if (seg.length_in_sequence_space() && _sender.segments_out().empty()) {
-        if (_sender.segments_out().empty()) {
-            _sender.send_empty_segment();
-        }
-        set_seg_state_and_send();
-    }
+    set_seg_state_and_send();
 }
 
 bool TCPConnection::active() const { return _active; }
