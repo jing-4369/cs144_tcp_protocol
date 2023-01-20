@@ -17,7 +17,7 @@
 // automated checks run by `make check_lab3`.
 
 template <typename... Targs>
-void DUMMY_CODE(Targs &&... /* unused */) {}
+void DUMMY_CODE(Targs &&.../* unused */) {}
 
 using namespace std;
 
@@ -33,45 +33,46 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
 uint64_t TCPSender::bytes_in_flight() const { return _bytes_flight; }
 
 void TCPSender::fill_window() {
-    if (_next_seqno == _stream.bytes_written() + 2) {
+    if (_has_FIN) {
         return;
     }
     TCPSegment seg;
-    size_t seg_size = min({TCPConfig::MAX_PAYLOAD_SIZE, _stream.buffer_size(), _window_size});
-    while (seg_size || (_next_seqno == 0 && !_has_SYN) ||
-           (_stream.input_ended() && !_has_FIN && _window_size > _bytes_flight)) {
-        seg.header().seqno = wrap(_next_seqno, _isn);
-        if (seg_size) {
-            seg.payload() = _stream.read(seg_size);
-            _next_seqno += seg.length_in_sequence_space();
-            _window_size -= seg.length_in_sequence_space();
-            if (_stream.input_ended() && _window_size) {
-                seg.header().fin = true;
-                _next_seqno++;
-                _has_FIN = true;
-                _window_size--;
-            }
-        } else if (_next_seqno == 0) {
-            seg.header().syn = true;
-            _next_seqno++;
-            _has_SYN = true;
-            _window_size--;
-        } else {
+    if (!_has_SYN) {
+        seg.header().syn = true;
+        send_tcp_segment(seg);
+        _has_SYN = true;
+        return;
+    }
+    if (_stream.eof() && _window_size > _bytes_flight) {
+        seg.header().fin = true;
+        send_tcp_segment(seg);
+        _has_FIN = true;
+        return;
+    }
+    size_t seg_size =
+        min({TCPConfig::MAX_PAYLOAD_SIZE, _stream.buffer_size(), static_cast<size_t>(_window_size - _bytes_flight)});
+    while (seg_size > 0) {
+        seg.payload() = _stream.read(seg_size);
+        if (_stream.eof() && _window_size > _bytes_flight + seg_size) {
             seg.header().fin = true;
-            _next_seqno++;
             _has_FIN = true;
-            _window_size--;
         }
-        _segments_out.push(seg);
-        _segments_flying.push_back(seg);
-        _bytes_flight += seg.length_in_sequence_space();
-        if (!_timer.is_running()) {
-            _timer.run_timer(_cur_time);
-        }
-        seg_size = min({TCPConfig::MAX_PAYLOAD_SIZE, _stream.buffer_size(), _window_size});
+        send_tcp_segment(seg);
+        seg_size = min(
+            {TCPConfig::MAX_PAYLOAD_SIZE, _stream.buffer_size(), static_cast<size_t>(_window_size - _bytes_flight)});
     }
 }
 
+void TCPSender::send_tcp_segment(TCPSegment &tcp_segment) {
+    tcp_segment.header().seqno = wrap(_next_seqno, _isn);
+    _segments_out.push(tcp_segment);
+    _segments_flying.push(tcp_segment);
+    _next_seqno += tcp_segment.length_in_sequence_space();
+    _bytes_flight += tcp_segment.length_in_sequence_space();
+    if (!_timer.is_running()) {
+        _timer.run_timer(_cur_time);
+    }
+}
 //! \param ackno The remote receiver's ackno (acknowledgment number)
 //! \param window_size The remote receiver's advertised window size
 void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
@@ -80,12 +81,12 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
         return;
     }
     while (!_segments_flying.empty()) {
-        WrappingInt32 cur_no =
-            _segments_flying.front().header().seqno + _segments_flying.front().length_in_sequence_space();
-        uint64_t abs_curno = unwrap(cur_no, _isn, next_seqno_absolute());
+        WrappingInt32 cur_no = _segments_flying.front().header().seqno;
+        uint64_t abs_curno =
+            unwrap(cur_no, _isn, next_seqno_absolute()) + _segments_flying.front().length_in_sequence_space();
         if (abs_ackno >= abs_curno) {
             _bytes_flight -= _segments_flying.front().length_in_sequence_space();
-            _segments_flying.pop_front();
+            _segments_flying.pop();
             _timer.reset_timeout(_initial_retransmission_timeout);
             _timer.run_timer(_cur_time);
         } else {
@@ -94,7 +95,8 @@ void TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_si
     }
     _next_seqno = max(_next_seqno, abs_ackno);
 
-    if ((!_has_FIN && abs_ackno == _stream.bytes_written() + 1) || (_has_FIN && abs_ackno == _stream.bytes_written() + 2)) {
+    if ((!_has_FIN && abs_ackno == _stream.bytes_written() + 1) ||
+        (_has_FIN && abs_ackno == _stream.bytes_written() + 2)) {
         _timer.stop_timer();
     }
     if (window_size == 0) {
@@ -112,11 +114,9 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     if (_timer.is_running() && _timer.is_expired(_cur_time) && !_segments_flying.empty()) {
         // After syn_acked, then window_size 0 can be treated as 1
         // means that syn sign is sended under double_timeout stretagy
-        if (_window_size == 0 && _congest_flag) {
-            _segments_out.push(_segments_flying.front());
-        } else {
+        _segments_out.push(_segments_flying.front());
+        if (!_congest_flag) {
             _timer.double_timeout();
-            _segments_out.push(_segments_flying.front());
         }
         _timer.run_timer(_cur_time);
     }

@@ -36,7 +36,7 @@ class TCPSender {
     uint64_t _next_seqno{0};
 
     size_t _window_size{1};
-    std::deque<TCPSegment> _segments_flying{};
+    std::queue<TCPSegment> _segments_flying{};
     TCPTimer _timer;
     size_t _cur_time{0};
     uint64_t _bytes_flight{0};
@@ -66,6 +66,8 @@ class TCPSender {
 
     //! \brief create and send segments to fill as much of the window as possible
     void fill_window();
+
+    void send_tcp_segment(TCPSegment &tcp_segment);
 
     //! \brief Notifies the TCPSender of the passage of time
     void tick(const size_t ms_since_last_tick);
