@@ -22,7 +22,7 @@ endif()
 # add some flags for the Release, Debug, and DebugSan modes set
 # (CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb3 -Og")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -ggdb3 -O0")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_DEBUG} -Og -pg")
+# set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_DEBUG} -Og -pg")
 set(CMAKE_CXX_FLAGS_DEBUGASAN
     "${CMAKE_CXX_FLAGS_DEBUG} -fsanitize=undefined -fsanitize=address")
 set(CMAKE_CXX_FLAGS_RELASAN
