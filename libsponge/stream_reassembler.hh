@@ -5,7 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <set>
+#include <map>
 #include <string>
 #include <utility>
 
@@ -17,9 +17,10 @@ class StreamReassembler {
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
-    std::set<std::pair<size_t, char>> buffer{};
+    std::map<size_t, std::string> buffer{};
     size_t cur_index{0};
-    size_t end_index{INT32_MAX};
+    size_t eof_index{INT32_MAX};
+    size_t _unassembled_bytes{0};
 
   public:
     //! \brief Construct a `StreamReassembler` that will store up to `capacity` bytes.
