@@ -38,7 +38,7 @@ void TCPReceiver::segment_received(const TCPSegment &seg) {
 optional<WrappingInt32> TCPReceiver::ackno() const {
     if (!SYN) {
         return {};
-    } else if (FIN && _reassembler.empty()) {
+    } else if (stream_out().input_ended()) {
         return wrap(stream_out().bytes_written() + 2, isn);
     } else {
         return wrap(stream_out().bytes_written() + 1, isn);
