@@ -111,7 +111,6 @@ void TCPConnection::tick(const size_t ms_since_last_tick) {
 
 void TCPConnection::end_input_stream() {
     _sender.stream_in().end_input();
-    // send FIN
     _sender.fill_window();
     set_seg_state_and_send();
 }

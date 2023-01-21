@@ -36,6 +36,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
             _unassembled_bytes += data.size();
             return;
         }
+        // merge data
         auto iter = buffer.upper_bound(index);
         --iter;
         string new_data(data);
@@ -69,9 +70,9 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         return;
     }
     size_t write_lens = min(_output.remaining_capacity(), data.size() - cur_index + index);
-    if (write_lens <= 0) {
-        return;
-    }
+    // if (write_lens <= 0) {
+    //     return;
+    // }
     _output.write(data.substr(cur_index - index, write_lens));
     cur_index = cur_index + write_lens;
     auto iter = buffer.begin();
